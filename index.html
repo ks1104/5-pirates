@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pirate Coin Division Simulator</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0;
+      background: radial-gradient(circle at center, #2b5876, #4e4376);
+      color: #fff;
+      overflow: hidden;
+    }
+    .container {
+      padding: 30px;
+      max-width: 800px;
+      margin: auto;
+    }
+    .intro {
+      background: rgba(0, 0, 0, 0.5);
+      padding: 30px;
+      border-radius: 10px;
+      text-align: center;
+    }
+    .game, .results, #userInputs, #checkResult {
+      display: none;
+      background: rgba(255, 255, 255, 0.95);
+      color: #000;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #4caf50;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    input[type="number"] {
+      width: 60px;
+      padding: 5px;
+      margin: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="intro" id="intro">
+      <h1>🏴‍☠️ The Pirate Coin Division Problem 🪙</h1>
+      <p>Five pirates have found 100 gold coins. Being rational, greedy, and willing to kill, they must decide how to distribute the coins. The most senior pirate proposes a distribution. If at least half agree, the coins are divided. Otherwise, the proposer is thrown overboard, and the next senior pirate proposes. What's the most logical way the coins would be distributed?</p>
+      <p><strong>Press ENTER to begin the game!</strong></p>
+      <p><em>Press F key to enter full-screen mode</em></p>
+    </div>
+
+    <div class="game" id="game">
+      <h2>Choose Number of Pirates</h2>
+      <label for="pirateCount">Number of Pirates: </label>
+      <input type="number" id="pirateCount" value="5" min="1" max="20">
+      <button onclick="generateInputs()">Submit Distribution</button>
+
+      <div id="userInputs"></div>
+      <button onclick="checkProposal()">Check My Proposal</button>
+      <div id="checkResult"></div>
+
+      <div class="results">
+        <h2>Correct Final Distribution</h2>
+        <button onclick="runSimulation()">Show Correct Answer</button>
+        <div id="results"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Enter") {
+        document.getElementById("intro").style.display = "none";
+        document.getElementById("game").style.display = "block";
+      }
+      if (e.key.toLowerCase() === "f") {
+        const el = document.documentElement;
+        if (el.requestFullscreen) {
+          el.requestFullscreen();
+        } else if (el.webkitRequestFullscreen) {
+          el.webkitRequestFullscreen();
+        } else if (el.msRequestFullscreen) {
+          el.msRequestFullscreen();
+        }
+      }
+    });
+
+    class Pirate {
+      constructor(id) {
+        this.id = id + 1;
+        this.coins = 0;
+      }
+    }
+
+    function simulate(pirates) {
+      const n = pirates.length;
+      if (n === 1) {
+        pirates[0].coins = 100;
+        return pirates;
+      }
+
+      let future = simulate(pirates.slice(1));
+      let proposal = new Array(n).fill(0);
+      const requiredVotes = Math.floor(n / 2) + 1;
+      const votes = [0];
+
+      const bribes = [];
+      for (let i = 1; i < n; i++) {
+        if (future[i - 1].coins === 0) {
+          bribes.push(i);
+        }
+      }
+
+      for (let i of bribes) {
+        if (votes.length >= requiredVotes) break;
+        proposal[i] = 1;
+        votes.push(i);
+      }
+
+      proposal[0] = 100 - proposal.reduce((a, b) => a + b, 0);
+      for (let i = 0; i < n; i++) {
+        pirates[i].coins = proposal[i];
+      }
+
+      return pirates;
+    }
+
+    function generateInputs() {
+      const count = parseInt(document.getElementById('pirateCount').value);
+      if (isNaN(count) || count < 1 || count > 20) {
+        alert('Please enter a number between 1 and 20.');
+        return;
+      }
+
+      const userInputDiv = document.getElementById('userInputs');
+      userInputDiv.style.display = 'block';
+      userInputDiv.innerHTML = `<p>Enter your proposed distribution (must sum to 100):</p>`;
+      for (let i = 0; i < count; i++) {
+        userInputDiv.innerHTML += `Pirate ${i + 1}: <input type='number' id='userCoin${i}' value='0' min='0'><br>`;
+      }
+      document.getElementById('results').textContent = '';
+      document.getElementById('checkResult').textContent = '';
+      document.getElementById('checkResult').style.display = 'block';
+      document.querySelector('.results').style.display = 'none';
+    }
+
+    function checkProposal() {
+      const count = parseInt(document.getElementById('pirateCount').value);
+      const userProposal = [];
+      let total = 0;
+      for (let i = 0; i < count; i++) {
+        const val = parseInt(document.getElementById(`userCoin${i}`).value);
+        if (isNaN(val) || val < 0) {
+          document.getElementById('checkResult').textContent = '🚫 Invalid input.';
+          return;
+        }
+        userProposal.push(val);
+        total += val;
+      }
+      if (total !== 100) {
+        document.getElementById('checkResult').textContent = '🚫 Total must be exactly 100 coins.';
+        return;
+      }
+
+      const pirates = Array.from({ length: count }, (_, i) => new Pirate(i));
+      const correct = simulate(pirates).map(p => p.coins);
+      const match = correct.every((val, i) => val === userProposal[i]);
+
+      document.getElementById('checkResult').textContent = match
+        ? '✅ Your proposal is logically valid and would be accepted!'
+        : '❌ Your proposal would be rejected or not optimal. Click below to view the correct answer.';
+
+      if (!match) {
+        document.querySelector('.results').style.display = 'block';
+      }
+    }
+
+    function runSimulation() {
+      const count = parseInt(document.getElementById('pirateCount').value);
+      const pirates = Array.from({ length: count }, (_, i) => new Pirate(i));
+      const result = simulate(pirates);
+
+      let output = `📦 Final Coin Distribution for ${count} Pirates:\n\n`;
+      for (let p of result) {
+        output += `🧔 Pirate ${p.id}: ${p.coins} coins\n`;
+      }
+      document.getElementById('results').textContent = output;
+      document.querySelector('.results').style.display = 'block';
+    }
+  </script>
+</body>
+</html>
